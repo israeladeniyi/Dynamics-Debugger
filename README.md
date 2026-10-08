@@ -9,7 +9,7 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 - Milestone 1 (extension shell): loads unpacked in Edge, toolbar button opens a side panel.
 - Milestone 2 (Dynamics detection): the side panel is only available on Dynamics 365 tabs (`https://<org>.crm*.dynamics.com`). It shows the detected environment, and you enable tracing per environment with **Enable for this environment**. Nothing is recorded yet.
 
-Capture and the timeline come in later milestones.
+Capture and the timeline come in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
 
 ## Build
 
