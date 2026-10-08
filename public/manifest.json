@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "D365 Trace Viewer",
+  "version": "0.1.0",
+  "description": "Turns Dynamics 365 / Dataverse browser activity into a readable timeline of what happened, how long it took, and where it failed.",
+  "minimum_chrome_version": "114",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Open D365 Trace Viewer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "permissions": ["sidePanel"]
+}

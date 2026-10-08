@@ -1,0 +1,18 @@
+{
+  "name": "d365-trace-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Microsoft Edge extension that turns Dynamics 365 / Dataverse browser activity into a readable timeline.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run build"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.1.43",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

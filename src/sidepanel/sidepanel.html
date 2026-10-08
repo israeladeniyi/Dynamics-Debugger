@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D365 Trace Viewer</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>D365 Trace Viewer</h1>
+      <span id="version" class="version"></span>
+    </header>
+
+    <section class="status" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="status-text">Not recording</span>
+    </section>
+
+    <section class="tab-info">
+      <h2>Active tab</h2>
+      <p id="tab-host">Checking…</p>
+    </section>
+
+    <main class="empty">
+      <p>The side panel is working.</p>
+      <p class="hint">Dynamics detection and recording arrive in the next milestones.</p>
+    </main>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>
