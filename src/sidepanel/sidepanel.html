@@ -39,12 +39,18 @@
     <main>
       <div class="list-header">
         <h2>Captured requests</h2>
-        <label class="hint"><input id="only-dataverse" type="checkbox" checked /> Dataverse only</label>
+        <label class="hint">Show
+          <select id="filter">
+            <option value="activity" selected>Data activity</option>
+            <option value="dataverse">All Dataverse</option>
+            <option value="all">All requests</option>
+          </select>
+        </label>
       </div>
       <p id="count" class="hint"></p>
       <table id="requests" class="requests">
         <thead>
-          <tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>ms</th></tr>
+          <tr><th>Time</th><th>Operation</th><th>Target</th><th>Status</th><th>ms</th></tr>
         </thead>
         <tbody></tbody>
       </table>

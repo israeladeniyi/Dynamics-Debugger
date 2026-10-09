@@ -194,7 +194,7 @@ h2 {
 }
 
 .requests th:nth-child(1) { width: 88px; }
-.requests th:nth-child(2) { width: 52px; }
+.requests th:nth-child(2) { width: 84px; }
 .requests th:nth-child(4) { width: 46px; }
 .requests th:nth-child(5) { width: 44px; }
 
@@ -207,7 +207,19 @@ h2 {
   text-align: right;
 }
 
+.requests tr.background td {
+  color: var(--muted);
+}
+
 .requests tr.failed td {
   background: var(--fail-bg);
   color: var(--fail-fg);
+}
+
+.list-header select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
 }

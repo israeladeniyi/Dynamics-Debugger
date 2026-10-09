@@ -10,6 +10,7 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 - Milestone 2 (Dynamics detection): the side panel is only available on Dynamics 365 tabs (`https://<org>.crm*.dynamics.com`). It shows the detected environment, and you enable tracing per environment with **Enable for this environment**. Nothing is recorded yet.
 
 - Milestone 3 (capture proof of concept): **Start**, **Pause**, **Resume**, **Stop** and **Clear** in the side panel, a pulsing *Recording* indicator and a **REC** badge on the toolbar button. While recording, every request the recorded tab makes to its Dynamics host is listed with time, method, path, status and duration. Only enabled environments can be recorded. See *What is captured* below.
+- Milestone 4 (Dataverse recognition): each Dataverse Web API request is labelled from its URL as **Create**, **Retrieve**, **Retrieve list**, **Update** or **Delete** on a table, or as a **Function**, **Action**, **Batch** or **Metadata** call. Known background calls the app makes on its own (client metadata, settings, Copilot and Customer Service features) are hidden by the default **Data activity** filter; **All Dataverse** and **All requests** show everything, with background rows greyed out. Hover a row for its full path and request ID.
 
 The friendly timeline comes in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
 
@@ -59,6 +60,8 @@ src/
     store.ts, types.ts     Recording state and captured requests in chrome.storage.session
   dataverse/
     detect.ts              Recognises Dynamics 365 hosts and app pages from a URL
+    parser.ts              Maps Web API method + path to Create/Retrieve/Update/Delete, function, action, $batch
+    background.ts          Known background calls hidden by the default filter
   settings/
     allowedHosts.ts        Environments the user has enabled for tracing (chrome.storage.sync)
   models/

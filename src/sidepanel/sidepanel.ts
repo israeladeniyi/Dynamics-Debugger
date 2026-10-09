@@ -1,14 +1,12 @@
 // Side panel entry point. Shows which Dynamics environment the active tab is
 // on, whether tracing is enabled for it, the recording controls, and the raw
-// list of captured requests. The friendly timeline arrives in Milestone 5.
+// list of captured requests with the Dataverse operation recognised from each
+// URL. The friendly timeline arrives in Milestone 5.
 import { detectDynamics, type DynamicsEnvironment } from '../dataverse/detect';
+import { operationLabel, parseDataverseRequest, targetLabel, type DataverseRequest } from '../dataverse/parser';
 import { getAllowedHosts, onAllowedHostsChanged, setHostAllowed } from '../settings/allowedHosts';
 import { getEvents, getState, onStoreChanged } from '../recording/store';
 import { IDLE_STATE, type CapturedRequest, type RecordingCommand, type RecordingState } from '../recording/types';
-
-// "/api/data/v9.0/incidents({id})" is listed as "incidents({id})"; the full
-// path is in the row's tooltip.
-const DATAVERSE_PREFIX = /^\/api\/data\/v\d+\.\d+\//;
 
 /** Rows shown at most; the full session stays in storage. */
 const MAX_ROWS = 300;
@@ -33,7 +31,7 @@ const resumeButton = byId<HTMLButtonElement>('btn-resume');
 const stopButton = byId<HTMLButtonElement>('btn-stop');
 const clearButton = byId<HTMLButtonElement>('btn-clear');
 const controlMessageEl = byId('control-message');
-const onlyDataverseEl = byId<HTMLInputElement>('only-dataverse');
+const filterEl = byId<HTMLSelectElement>('filter');
 const countEl = byId('count');
 const tbody = byId<HTMLTableElement>('requests').tBodies[0];
 const emptyEl = byId('empty');
@@ -106,30 +104,55 @@ function cell(text: string, className?: string): HTMLTableCellElement {
   return td;
 }
 
-function renderEvents(): void {
-  // Events are stored in completion order; list them by start time.
-  const shown = (
-    onlyDataverseEl.checked
-      ? events.filter((e) => e.urlClass === 'dataverse-api' || e.urlClass === 'dataverse-batch')
-      : events.slice()
-  ).sort((a, b) => a.start - b.start);
-  const rows = shown.slice(-MAX_ROWS);
+type Filter = 'activity' | 'dataverse' | 'all';
 
-  countEl.textContent = events.length === 0 ? '' : `${shown.length} shown of ${events.length} captured` +
-    (shown.length > rows.length ? ` (latest ${rows.length} listed)` : '');
+interface Row {
+  event: CapturedRequest;
+  dataverse: DataverseRequest | null;
+}
+
+function isShown(row: Row, filter: Filter): boolean {
+  if (filter === 'all') return true;
+  if (!row.dataverse) return false;
+  return filter === 'dataverse' || !row.dataverse.background;
+}
+
+function renderEvents(): void {
+  const filter = filterEl.value as Filter;
+  const all: Row[] = events.map((event) => ({ event, dataverse: parseDataverseRequest(event.method, event.path) }));
+  // Events are stored in completion order; list them by start time.
+  const shown = all.filter((row) => isShown(row, filter)).sort((a, b) => a.event.start - b.event.start);
+  const rows = shown.slice(-MAX_ROWS);
+  const hiddenBackground = filter === 'activity' ? all.filter((r) => r.dataverse?.background).length : 0;
+
+  countEl.textContent =
+    events.length === 0
+      ? ''
+      : `${shown.length} shown of ${events.length} captured` +
+        (hiddenBackground > 0 ? ` · ${hiddenBackground} background Dataverse calls hidden` : '') +
+        (shown.length > rows.length ? ` (latest ${rows.length} listed)` : '');
   emptyEl.hidden = events.length > 0;
 
   const fragment = document.createDocumentFragment();
-  for (const e of rows) {
+  for (const { event: e, dataverse } of rows) {
     const tr = document.createElement('tr');
-    if (e.status === 0 || e.status >= 400) tr.className = 'failed';
-    tr.title = [e.path, e.serviceRequestId ? `Request ID: ${e.serviceRequestId}` : '', e.error ?? '', e.fromCache ? 'From cache' : '']
+    const classes = [];
+    if (e.status === 0 || e.status >= 400) classes.push('failed');
+    if (dataverse?.background) classes.push('background');
+    tr.className = classes.join(' ');
+    tr.title = [
+      `${e.method} ${e.path}`,
+      dataverse?.background ? 'Background call made by the app' : '',
+      e.serviceRequestId ? `Request ID: ${e.serviceRequestId}` : '',
+      e.error ?? '',
+      e.fromCache ? 'From cache' : '',
+    ]
       .filter(Boolean)
       .join('\n');
     tr.append(
       cell(formatTime(e.start), 'time'),
-      cell(e.method),
-      cell(e.path.replace(DATAVERSE_PREFIX, ''), 'path'),
+      cell(dataverse ? operationLabel(dataverse) : e.method, 'op'),
+      cell(dataverse ? targetLabel(dataverse) : e.path, 'path'),
       cell(e.status === 0 ? 'failed' : String(e.status)),
       cell(String(e.durationMs), 'num'),
     );
@@ -169,7 +192,7 @@ pauseButton.addEventListener('click', () => send({ type: 'pause' }).catch(onComm
 resumeButton.addEventListener('click', () => send({ type: 'resume' }).catch(onCommandError));
 stopButton.addEventListener('click', () => send({ type: 'stop' }).catch(onCommandError));
 clearButton.addEventListener('click', () => send({ type: 'clear' }).catch(onCommandError));
-onlyDataverseEl.addEventListener('change', renderEvents);
+filterEl.addEventListener('change', renderEvents);
 
 allowButton.addEventListener('click', () => {
   if (!current) return;
