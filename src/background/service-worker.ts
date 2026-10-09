@@ -1,11 +1,16 @@
-// Background service worker. Makes the toolbar button open the side panel and
-// keeps the panel available only on Dynamics 365 tabs. Capture logic arrives
-// in Milestone 3.
+// Background service worker. Makes the toolbar button open the side panel,
+// keeps the panel available only on Dynamics 365 tabs, runs recording
+// commands from the panel, and captures requests while recording.
+import { registerNetworkCapture } from '../capture/network';
 import { detectDynamics } from '../dataverse/detect';
+import { getAllowedHosts } from '../settings/allowedHosts';
+import { appendEvents, clearEvents, getState, onStoreChanged, setState } from '../recording/store';
+import { IDLE_STATE, type CapturedRequest, type RecordingCommand, type RecordingState } from '../recording/types';
 
 const PANEL_PATH = 'sidepanel/sidepanel.html';
 const NOT_DYNAMICS_TITLE = 'D365 Trace Viewer: open a Dynamics 365 page to use it';
 const DYNAMICS_TITLE = 'Open D365 Trace Viewer';
+const FLUSH_DELAY_MS = 250;
 
 function logError(context: string) {
   return (error: unknown) => console.error(`[D365 Trace Viewer] ${context}`, error);
@@ -37,3 +42,95 @@ chrome.tabs
   .query({})
   .then((tabs) => Promise.all(tabs.map((t) => (t.id === undefined ? null : updateTab(t.id, t.url)))))
   .catch(logError('initial tab scan failed'));
+
+// ---- Recording ----
+
+// One cached promise, so every handler sees the same state in event order.
+let currentState: Promise<RecordingState> = getState();
+onStoreChanged(({ state }) => {
+  if (state) currentState = Promise.resolve(state);
+});
+
+async function changeState(next: RecordingState): Promise<void> {
+  currentState = Promise.resolve(next);
+  await setState(next);
+  await showBadge(next);
+}
+
+async function showBadge(state: RecordingState): Promise<void> {
+  const label = state.status === 'recording' ? 'REC' : state.status === 'paused' ? 'II' : '';
+  await chrome.action.setBadgeBackgroundColor({ color: state.status === 'recording' ? '#c50f1f' : '#8a8886' });
+  await chrome.action.setBadgeText({ text: label });
+}
+
+let buffer: CapturedRequest[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function flush(): void {
+  flushTimer = undefined;
+  const batch = buffer;
+  buffer = [];
+  if (batch.length > 0) appendEvents(batch).catch(logError('saving events failed'));
+}
+
+registerNetworkCapture(
+  () => currentState,
+  (request) => {
+    buffer.push(request);
+    flushTimer ??= setTimeout(flush, FLUSH_DELAY_MS);
+  },
+);
+
+async function runCommand(command: RecordingCommand): Promise<RecordingState> {
+  const state = await currentState;
+  switch (command.type) {
+    case 'start': {
+      // Capture only happens on environments the user has enabled.
+      const allowed = await getAllowedHosts();
+      if (!allowed.includes(command.host)) throw new Error('Tracing is not enabled for this environment.');
+      buffer = [];
+      await clearEvents();
+      await changeState({ status: 'recording', tabId: command.tabId, host: command.host, startedAt: Date.now() });
+      break;
+    }
+    case 'pause':
+      if (state.status === 'recording') await changeState({ ...state, status: 'paused' });
+      break;
+    case 'resume':
+      if (state.status === 'paused') await changeState({ ...state, status: 'recording' });
+      break;
+    case 'stop':
+      if (state.status === 'recording' || state.status === 'paused') {
+        flush();
+        await changeState({ ...state, status: 'stopped' });
+      }
+      break;
+    case 'clear':
+      buffer = [];
+      await clearEvents();
+      if (state.status === 'stopped') await changeState(IDLE_STATE);
+      break;
+  }
+  return currentState;
+}
+
+chrome.runtime.onMessage.addListener((message: RecordingCommand, sender, sendResponse) => {
+  // Only the extension's own pages (the side panel) may control recording.
+  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return false;
+  runCommand(message)
+    .then((state) => sendResponse({ ok: true, state }))
+    .catch((error: unknown) => sendResponse({ ok: false, error: String(error instanceof Error ? error.message : error) }));
+  return true;
+});
+
+// Stop when the recorded tab closes.
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void currentState.then((state) => {
+    if (state.tabId === tabId && (state.status === 'recording' || state.status === 'paused')) {
+      flush();
+      return changeState({ ...state, status: 'stopped' });
+    }
+  });
+});
+
+void currentState.then(showBadge).catch(logError('badge failed'));

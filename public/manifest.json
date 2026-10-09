@@ -26,7 +26,8 @@
   },
   "permissions": [
     "sidePanel",
-    "storage"
+    "storage",
+    "webRequest"
   ],
   "host_permissions": [
     "https://*.dynamics.com/*"

@@ -5,6 +5,10 @@
   --muted: #616161;
   --border: #e0e0e0;
   --idle: #9e9e9e;
+  --rec: #c50f1f;
+  --paused: #ca5010;
+  --fail-bg: #fde7e9;
+  --fail-fg: #a4262c;
   font-family: 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
 }
@@ -15,6 +19,8 @@
     --fg: #f3f3f3;
     --muted: #b0b0b0;
     --border: #3a3a3a;
+    --fail-bg: #442726;
+    --fail-fg: #f1707b;
   }
 }
 
@@ -112,4 +118,96 @@ h2 {
   padding: 4px 10px;
   font: inherit;
   cursor: pointer;
+}
+
+.status[data-status='recording'] .dot {
+  background: var(--rec);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.status[data-status='paused'] .dot {
+  background: var(--paused);
+}
+
+.status[data-status='recording'] #status-text {
+  color: var(--rec);
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.controls button {
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.controls button:disabled {
+  cursor: default;
+}
+
+.list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.list-header label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.requests {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+}
+
+.requests th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding: 2px 4px;
+}
+
+.requests td {
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requests th:nth-child(1) { width: 88px; }
+.requests th:nth-child(2) { width: 52px; }
+.requests th:nth-child(4) { width: 46px; }
+.requests th:nth-child(5) { width: 44px; }
+
+.requests .time,
+.requests .num {
+  font-variant-numeric: tabular-nums;
+}
+
+.requests .num {
+  text-align: right;
+}
+
+.requests tr.failed td {
+  background: var(--fail-bg);
+  color: var(--fail-fg);
 }

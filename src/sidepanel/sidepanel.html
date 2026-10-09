@@ -12,7 +12,7 @@
       <span id="version" class="version"></span>
     </header>
 
-    <section class="status" aria-live="polite">
+    <section id="status" class="status" aria-live="polite">
       <span class="dot" aria-hidden="true"></span>
       <span id="status-text">Not recording</span>
     </section>
@@ -27,8 +27,28 @@
       </div>
     </section>
 
-    <main class="empty">
-      <p>Recording arrives in the next milestone.</p>
+    <section class="controls" aria-label="Recording controls">
+      <button id="btn-start" type="button">Start</button>
+      <button id="btn-pause" type="button">Pause</button>
+      <button id="btn-resume" type="button">Resume</button>
+      <button id="btn-stop" type="button">Stop</button>
+      <button id="btn-clear" type="button">Clear</button>
+    </section>
+    <p id="control-message" class="hint" aria-live="polite"></p>
+
+    <main>
+      <div class="list-header">
+        <h2>Captured requests</h2>
+        <label class="hint"><input id="only-dataverse" type="checkbox" checked /> Dataverse only</label>
+      </div>
+      <p id="count" class="hint"></p>
+      <table id="requests" class="requests">
+        <thead>
+          <tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>ms</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty" class="empty">Press Start, then use Dynamics as normal. Requests appear here.</p>
     </main>
 
     <script type="module" src="sidepanel.js"></script>
