@@ -107,9 +107,12 @@ function cell(text: string, className?: string): HTMLTableCellElement {
 }
 
 function renderEvents(): void {
-  const shown = onlyDataverseEl.checked
-    ? events.filter((e) => e.urlClass === 'dataverse-api' || e.urlClass === 'dataverse-batch')
-    : events;
+  // Events are stored in completion order; list them by start time.
+  const shown = (
+    onlyDataverseEl.checked
+      ? events.filter((e) => e.urlClass === 'dataverse-api' || e.urlClass === 'dataverse-batch')
+      : events.slice()
+  ).sort((a, b) => a.start - b.start);
   const rows = shown.slice(-MAX_ROWS);
 
   countEl.textContent = events.length === 0 ? '' : `${shown.length} shown of ${events.length} captured` +
