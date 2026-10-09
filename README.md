@@ -7,7 +7,7 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 ## Status
 
 - Milestone 1 (extension shell): loads unpacked in Edge, toolbar button opens a side panel.
-- Milestone 2 (Dynamics detection): the side panel is only available on Dynamics 365 tabs (`https://<org>.crm*.dynamics.com`). It shows the detected environment, and you enable tracing per environment with **Enable for this environment**. Nothing is recorded yet.
+- Milestone 2 (Dynamics detection): the side panel recognises Dynamics 365 tabs (`https://<org>.crm*.dynamics.com`) and shows the detected environment; you enable tracing per environment with **Enable for this environment**. The panel stays open when you switch tabs and says "Not a Dynamics 365 page" on other sites. Nothing is recorded yet.
 
 Capture and the timeline come in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
 
@@ -30,7 +30,7 @@ npm run check      # typecheck + tests + build
 2. Open `edge://extensions`.
 3. Turn on **Developer mode**.
 4. Click **Load unpacked** and select the `dist` folder.
-5. Open your Dynamics 365 app, then click the **D365 Trace Viewer** toolbar button (pin it from the Extensions menu if hidden). The side panel opens. On other sites the button does nothing.
+5. Open your Dynamics 365 app, then click the **D365 Trace Viewer** toolbar button (pin it from the Extensions menu if hidden). The side panel opens and stays open as you switch tabs.
 
 After rebuilding, click **Reload** on the extension card in `edge://extensions`.
 
@@ -42,7 +42,7 @@ public/
   icons/                   Toolbar icons (regenerate with scripts/make-icons.py)
 src/
   background/
-    service-worker.ts      Toolbar button opens the panel; panel enabled only on Dynamics tabs
+    service-worker.ts      Toolbar button opens the panel; per-tab button tooltip
   dataverse/
     detect.ts              Recognises Dynamics 365 hosts and app pages from a URL
   settings/
