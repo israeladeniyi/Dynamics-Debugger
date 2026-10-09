@@ -31,6 +31,17 @@ describe('shownEvents', () => {
     expect(shownEvents(requests, 'dataverse').map((e) => e.id)).toEqual(['a', 'c', 'b', 'e']);
     expect(shownEvents(requests, 'all').map((e) => e.id)).toEqual(['a', 'c', 'd', 'b', 'e']);
   });
+
+  it('lists every failure under Failures, including non-Dataverse and background ones', () => {
+    const withBackgroundFailure = [...requests, req({ id: 'f', start: T0 + 500, path: '/api/data/v9.0/msdyn_rtestructuredtemplateconfigs({id})', status: 404 })];
+    expect(shownEvents(withBackgroundFailure, 'failures').map((e) => e.id)).toEqual(['d', 'f']);
+  });
+
+  it('adds the error message to the copied note', () => {
+    const failed = [req({ id: 'x', status: 400, serviceRequestId: 'id1', method: 'POST' })];
+    const text = eventsToText(shownEvents(failed, 'failures', { id1: { requestId: 'id1', status: 400, code: '0x1', message: 'Bad' } }), 'H');
+    expect(text.trimEnd().split('\n')[2].split('\t')[8]).toBe('0x1: Bad');
+  });
 });
 
 describe('eventsToText', () => {

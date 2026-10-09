@@ -1,20 +1,22 @@
 // Filtering, sorting and copy-as-text for the timeline. Kept free of DOM code
 // so it can be unit tested.
 import type { CapturedRequest } from '../recording/types';
-import { normalize, type TimelineEvent } from '../timeline/normalizer';
+import { normalize, type ErrorLookup, type TimelineEvent } from '../timeline/normalizer';
 
-export type Filter = 'activity' | 'dataverse' | 'all';
+export type Filter = 'activity' | 'failures' | 'dataverse' | 'all';
 
 export function isShown(event: TimelineEvent, filter: Filter): boolean {
   if (filter === 'all') return true;
+  // Every failure, including background and non-Dataverse ones.
+  if (filter === 'failures') return event.severity === 'error';
   if (!event.details.dataverse) return false;
   return filter === 'dataverse' || !event.details.background;
 }
 
 /** Events that pass the filter, by start time (requests are stored in completion order). */
-export function shownEvents(requests: CapturedRequest[], filter: Filter): TimelineEvent[] {
+export function shownEvents(requests: CapturedRequest[], filter: Filter, errors: ErrorLookup = {}): TimelineEvent[] {
   return requests
-    .map(normalize)
+    .map((request) => normalize(request, errors))
     .filter((event) => isShown(event, filter))
     .sort((a, b) => a.timestamp - b.timestamp);
 }
@@ -56,6 +58,7 @@ export function eventsToText(events: TimelineEvent[], heading: string): string {
       e.details.background ? 'background' : '',
       e.severity === 'warning' ? 'slow' : '',
       e.details.error ?? '',
+      [e.details.errorCode, e.details.errorMessage].filter(Boolean).join(': '),
       e.details.fromCache ? 'from cache' : '',
     ]
       .filter(Boolean)

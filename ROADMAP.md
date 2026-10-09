@@ -6,8 +6,8 @@ The v0.1 milestones follow the D365 Trace Viewer Edge development plan:
 2. Dynamics detection (done)
 3. Capture proof of concept (done)
 4. Dataverse recognition (done)
-5. Clean timeline (in review)
-6. Failure-first debugging
+5. Clean timeline (done)
+6. Failure-first debugging (in review)
 7. Friendly Dynamics translation
 8. Export and privacy hardening
 9. Action Stories prototype

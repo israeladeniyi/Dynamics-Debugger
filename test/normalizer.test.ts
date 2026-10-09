@@ -64,4 +64,13 @@ describe('normalize', () => {
     const e = normalize({ ...base, method: 'GET', path: '/api/data/v9.0/GetClientMetadata(ClientMetadataQuery=@q)' });
     expect(e.details.background).toBe(true);
   });
+
+  it('attaches the error code and message by request ID', () => {
+    const e = normalize(
+      { ...base, status: 400, serviceRequestId: 'ABC' },
+      { abc: { requestId: 'abc', status: 400, code: '0x80040265', message: 'Validation failed' } },
+    );
+    expect(e.severity).toBe('error');
+    expect(e.details).toMatchObject({ errorCode: '0x80040265', errorMessage: 'Validation failed' });
+  });
 });

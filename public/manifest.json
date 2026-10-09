@@ -24,7 +24,31 @@
   "side_panel": {
     "default_path": "sidepanel/sidepanel.html"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.dynamics.com/*"
+      ],
+      "js": [
+        "content/main-world.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.dynamics.com/*"
+      ],
+      "js": [
+        "content/bridge.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
   "permissions": [
+    "scripting",
     "sidePanel",
     "storage",
     "webRequest"

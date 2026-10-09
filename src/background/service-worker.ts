@@ -4,7 +4,8 @@
 import { registerNetworkCapture } from '../capture/network';
 import { detectDynamics } from '../dataverse/detect';
 import { getAllowedHosts } from '../settings/allowedHosts';
-import { appendEvents, clearEvents, getState, onStoreChanged, setState } from '../recording/store';
+import { toErrorDetail } from '../capture/errorBody';
+import { addErrorDetail, appendEvents, clearEvents, getState, onStoreChanged, setState } from '../recording/store';
 import { IDLE_STATE, type CapturedRequest, type RecordingCommand, type RecordingState } from '../recording/types';
 
 const PANEL_PATH = 'sidepanel/sidepanel.html';
@@ -81,6 +82,26 @@ registerNetworkCapture(
   },
 );
 
+/**
+ * The manifest adds the content scripts only when a page loads. A tab that was
+ * open before the extension was installed or reloaded has none, or has a
+ * bridge cut off from the reloaded extension ("Extension context
+ * invalidated"), so error messages would be lost. Adding them again when
+ * recording starts fixes that without a page refresh. main-world.ts skips
+ * itself if it already ran; a second bridge only repeats a message, which the
+ * store keys by request ID.
+ */
+async function attachContentScripts(tabId: number): Promise<void> {
+  const target = { tabId, allFrames: true };
+  try {
+    await chrome.scripting.executeScript({ target, files: ['content/main-world.js'], world: 'MAIN' });
+    await chrome.scripting.executeScript({ target, files: ['content/bridge.js'] });
+  } catch (error) {
+    // Recording still works without them; only the error messages are missing.
+    logError('adding content scripts failed')(error);
+  }
+}
+
 async function runCommand(command: RecordingCommand): Promise<RecordingState> {
   const state = await currentState;
   switch (command.type) {
@@ -91,6 +112,7 @@ async function runCommand(command: RecordingCommand): Promise<RecordingState> {
       buffer = [];
       await clearEvents();
       await changeState({ status: 'recording', tabId: command.tabId, host: command.host, startedAt: Date.now() });
+      await attachContentScripts(command.tabId);
       break;
     }
     case 'pause':
@@ -114,9 +136,24 @@ async function runCommand(command: RecordingCommand): Promise<RecordingState> {
   return currentState;
 }
 
-chrome.runtime.onMessage.addListener((message: RecordingCommand, sender, sendResponse) => {
+/** Error details from the content scripts, kept only for the tab and host being recorded. */
+async function receiveErrorDetail(message: unknown, sender: chrome.runtime.MessageSender): Promise<void> {
+  const detail = toErrorDetail((message as { detail?: unknown }).detail);
+  if (!detail || sender.tab?.id === undefined || !sender.url) return;
+  const state = await currentState;
+  if (state.status !== 'recording' || state.tabId !== sender.tab.id) return;
+  if (new URL(sender.url).host !== state.host) return;
+  await addErrorDetail(detail);
+}
+
+chrome.runtime.onMessage.addListener((message: RecordingCommand | { type: 'error-detail' }, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id) return false;
+  if (message.type === 'error-detail') {
+    receiveErrorDetail(message, sender).catch(logError('saving error detail failed'));
+    return false;
+  }
   // Only the extension's own pages (the side panel) may control recording.
-  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return false;
+  if (!sender.url?.startsWith(chrome.runtime.getURL(''))) return false;
   runCommand(message)
     .then((state) => sendResponse({ ok: true, state }))
     .catch((error: unknown) => sendResponse({ ok: false, error: String(error instanceof Error ? error.message : error) }));
