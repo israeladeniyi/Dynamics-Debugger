@@ -3,6 +3,7 @@
 // file only decides severity and what goes into Details.
 import { operationLabel, parseDataverseRequest, targetLabel } from '../dataverse/parser';
 import type { TraceEvent, TraceSeverity } from '../models/TraceEvent';
+import type { ErrorDetail } from '../capture/errorBody';
 import type { CapturedRequest } from '../recording/types';
 
 /**
@@ -27,6 +28,10 @@ export interface TimelineDetails {
   fromCache: boolean;
   /** Browser network error, when the request did not complete. */
   error?: string;
+  /** Dataverse error code from the response body, e.g. "0x80040217". */
+  errorCode?: string;
+  /** Dataverse error message from the response body. */
+  errorMessage?: string;
 }
 
 export type TimelineEvent = TraceEvent & { details: TimelineDetails };
@@ -37,10 +42,14 @@ export function severityOf(status: number, durationMs: number): TraceSeverity {
   return 'success';
 }
 
-export function normalize(request: CapturedRequest): TimelineEvent {
+/** Error details by lower-case request ID. */
+export type ErrorLookup = Record<string, ErrorDetail>;
+
+export function normalize(request: CapturedRequest, errors: ErrorLookup = {}): TimelineEvent {
   const parsed = parseDataverseRequest(request.method, request.path);
   const operationText = parsed ? operationLabel(parsed) : request.method;
   const target = parsed ? targetLabel(parsed) : request.path;
+  const errorDetail = request.serviceRequestId ? errors[request.serviceRequestId.toLowerCase()] : undefined;
   return {
     id: request.id,
     timestamp: request.start,
@@ -61,6 +70,8 @@ export function normalize(request: CapturedRequest): TimelineEvent {
       dataverse: parsed !== null,
       fromCache: request.fromCache,
       error: request.error,
+      errorCode: errorDetail?.code,
+      errorMessage: errorDetail?.message,
     },
   };
 }

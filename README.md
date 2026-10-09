@@ -13,12 +13,16 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 - Milestone 4 (Dataverse recognition): each Dataverse Web API request is labelled from its URL as **Create**, **Retrieve**, **Retrieve list**, **Update** or **Delete** on a table, or as a **Function**, **Action**, **Batch** or **Metadata** call. Known background calls the app makes on its own (client metadata, settings, Copilot and Customer Service features) are hidden by the default **Data activity** filter; **All Dataverse** and **All requests** show everything, with background rows greyed out. Hover a row for its full path and request ID. **Copy** puts the listed rows on the clipboard as tab-separated text (time, operation, target, status, ms, method, path, request ID), which pastes into Excel, a ticket or a chat. It holds only what the panel already stores.
 - Milestone 5 (clean timeline): the list is a timeline in start order. Each event has a status colour (green OK, amber slow at 2 s or more, red failed, grey background), its duration with a bar scaled to the slowest listed event, and a "N s later" marker where 5 s or more passed between events. Click an event to open its Details: request, status, duration, start time, request ID, table and notes.
 
-Friendly names, error messages and action stories come in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
+- Milestone 6 (failure-first): when a Dataverse request fails, the error code and message Dynamics returned are shown on the event itself and in its Details. A red **N failed** button (with how many were background calls) switches to the new **Failures** filter, which lists every failed request, including background and non-Dataverse ones. Background failures are greyed so they are not mistaken for your action failing.
+
+Friendly names and action stories come in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
 
 ## What is captured
 
 - Captured: start time, duration, HTTP method, path, HTTP status (or the browser's network error), the `x-ms-service-request-id` response header, and whether it came from cache.
-- Never captured: query strings (Dynamics puts FetchXML and filter values there), request or response bodies, cookies, `Authorization` or any other header. Record GUIDs in the path are replaced by `{id}`.
+- For failed (4xx/5xx) Dataverse Web API responses only: the `error.code` and `error.message` from the response body, the message cut to 500 characters. Other fields of the error body, such as `TraceText` (plug-in trace) and inner exceptions, are not kept because they can contain record data.
+- Never captured: query strings (Dynamics puts FetchXML and filter values there), request bodies, successful response bodies, cookies, `Authorization` or any other header. Record GUIDs in the path are replaced by `{id}`.
+- How error messages are read: a small script runs in Dynamics pages and wraps the browser's `fetch` and `XMLHttpRequest` (not any Dynamics JavaScript). It reads a copy of the body of failed Dataverse responses only, so the page still gets the original. It passes the code, message and request ID to the extension, which keeps them only while that tab is being recorded.
 - Only the tab you pressed **Start** on, and only its Dynamics host. Other tabs and sites are ignored.
 - Stored in `chrome.storage.session`: in memory, kept if Edge pauses the extension's background script, and wiped when Edge closes. At most 5,000 requests per recording; the oldest are dropped after that.
 
@@ -54,7 +58,11 @@ public/
 src/
   background/
     service-worker.ts      Panel only on Dynamics tabs; runs recording commands and capture
+  content/
+    main-world.ts          In-page fetch/XHR wrapper: error code + message of failed Dataverse responses
+    bridge.ts              Forwards those to the background script
   capture/
+    errorBody.ts           Reads and validates the error code and message
     classify.ts            Sanitizes paths and sorts URLs (Dataverse API, $batch, page, resource)
     network.ts             Read-only chrome.webRequest capture for the recorded tab
   recording/

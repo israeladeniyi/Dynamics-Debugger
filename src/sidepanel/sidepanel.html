@@ -42,6 +42,7 @@
         <label class="hint">Show
           <select id="filter">
             <option value="activity" selected>Data activity</option>
+            <option value="failures">Failures</option>
             <option value="dataverse">All Dataverse</option>
             <option value="all">All requests</option>
           </select>
@@ -49,6 +50,7 @@
       </div>
       <div class="count-row">
         <p id="count" class="hint"></p>
+        <button id="btn-failures" type="button" class="failures" title="Show every failed request" hidden></button>
         <span id="copy-status" class="hint" aria-live="polite"></span>
         <button id="btn-copy" type="button" title="Copy the listed requests as tab-separated text" disabled>Copy</button>
       </div>

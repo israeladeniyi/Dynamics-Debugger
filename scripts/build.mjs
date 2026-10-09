@@ -19,6 +19,16 @@ const options = {
   logLevel: 'info',
 };
 
+// Content scripts cannot be ES modules, so they are bundled as plain scripts.
+const contentOptions = {
+  ...options,
+  entryPoints: {
+    'content/main-world': 'src/content/main-world.ts',
+    'content/bridge': 'src/content/bridge.ts',
+  },
+  format: 'iife',
+};
+
 async function copyStatic() {
   await cp('public', outdir, { recursive: true });
   await mkdir(`${outdir}/sidepanel`, { recursive: true });
@@ -29,11 +39,11 @@ async function copyStatic() {
 await rm(outdir, { recursive: true, force: true });
 
 if (watch) {
-  const ctx = await context(options);
+  const contexts = await Promise.all([context(options), context(contentOptions)]);
   await copyStatic();
-  await ctx.watch();
+  await Promise.all(contexts.map((ctx) => ctx.watch()));
   console.log('Watching for changes. Static files are copied once; re-run after editing HTML/CSS/manifest.');
 } else {
-  await build(options);
+  await Promise.all([build(options), build(contentOptions)]);
   await copyStatic();
 }

@@ -1,10 +1,16 @@
 // Recording state and captured requests live in chrome.storage.session: it is
 // in memory only (cleared when the browser closes) but survives the background
 // service worker being stopped, which Edge does after ~30 s without events.
+import type { ErrorDetail } from '../capture/errorBody';
 import { IDLE_STATE, type CapturedRequest, type RecordingState } from './types';
 
 const STATE_KEY = 'recordingState';
 const EVENTS_KEY = 'capturedRequests';
+const ERRORS_KEY = 'errorDetails';
+
+/** Error details kept per recording, by request ID. */
+export type ErrorDetails = Record<string, ErrorDetail>;
+export const MAX_ERROR_DETAILS = 500;
 
 /** Oldest requests are dropped beyond this, to stay within storage limits. */
 export const MAX_EVENTS = 5000;
@@ -45,15 +51,36 @@ export function appendEvents(added: CapturedRequest[]): Promise<void> {
 }
 
 export function clearEvents(): Promise<void> {
-  return enqueue(() => chrome.storage.session.set({ [EVENTS_KEY]: [] }));
+  return enqueue(() => chrome.storage.session.set({ [EVENTS_KEY]: [], [ERRORS_KEY]: {} }));
 }
 
-export function onStoreChanged(listener: (change: { state?: RecordingState; events?: CapturedRequest[] }) => void): void {
+export async function getErrorDetails(): Promise<ErrorDetails> {
+  const stored = await chrome.storage.session.get(ERRORS_KEY);
+  return (stored[ERRORS_KEY] as ErrorDetails | undefined) ?? {};
+}
+
+export function addErrorDetail(detail: ErrorDetail): Promise<void> {
+  return enqueue(async () => {
+    const details = await getErrorDetails();
+    if (Object.keys(details).length >= MAX_ERROR_DETAILS) return;
+    details[detail.requestId] = detail;
+    await chrome.storage.session.set({ [ERRORS_KEY]: details });
+  });
+}
+
+export interface StoreChange {
+  state?: RecordingState;
+  events?: CapturedRequest[];
+  errors?: ErrorDetails;
+}
+
+export function onStoreChanged(listener: (change: StoreChange) => void): void {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'session') return;
-    const change: { state?: RecordingState; events?: CapturedRequest[] } = {};
+    const change: StoreChange = {};
     if (STATE_KEY in changes) change.state = (changes[STATE_KEY].newValue as RecordingState | undefined) ?? IDLE_STATE;
     if (EVENTS_KEY in changes) change.events = (changes[EVENTS_KEY].newValue as CapturedRequest[] | undefined) ?? [];
-    if (change.state || change.events) listener(change);
+    if (ERRORS_KEY in changes) change.errors = (changes[ERRORS_KEY].newValue as ErrorDetails | undefined) ?? {};
+    if (change.state || change.events || change.errors) listener(change);
   });
 }

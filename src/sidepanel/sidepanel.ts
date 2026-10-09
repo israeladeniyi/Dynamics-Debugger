@@ -3,7 +3,7 @@
 // timeline of captured requests: status colour, duration and expandable Details.
 import { detectDynamics, type DynamicsEnvironment } from '../dataverse/detect';
 import { getAllowedHosts, onAllowedHostsChanged, setHostAllowed } from '../settings/allowedHosts';
-import { getEvents, getState, onStoreChanged } from '../recording/store';
+import { getErrorDetails, getEvents, getState, onStoreChanged, type ErrorDetails } from '../recording/store';
 import { IDLE_STATE, type CapturedRequest, type RecordingCommand, type RecordingState } from '../recording/types';
 import type { TimelineEvent } from '../timeline/normalizer';
 import {
@@ -45,6 +45,7 @@ const filterEl = byId<HTMLSelectElement>('filter');
 const copyButton = byId<HTMLButtonElement>('btn-copy');
 const copyStatusEl = byId('copy-status');
 const countEl = byId('count');
+const failuresButton = byId<HTMLButtonElement>('btn-failures');
 const timelineEl = byId<HTMLOListElement>('timeline');
 const emptyEl = byId('empty');
 
@@ -55,6 +56,8 @@ let currentTabId: number | null = null;
 let allowedHosts: string[] = [];
 let recording: RecordingState = IDLE_STATE;
 let events: CapturedRequest[] = [];
+/** Error code and message from failed responses, by request ID. */
+let errors: ErrorDetails = {};
 /** Events whose Details are open; kept across re-renders. */
 const expanded = new Set<string>();
 
@@ -124,10 +127,15 @@ function detailsList(e: TimelineEvent): HTMLDListElement {
   add('Started', formatTime(e.timestamp));
   add('Request ID', e.correlationId);
   add('Table', e.details.dataverse && e.operation !== 'Other' ? e.resource : undefined);
-  add('Error', e.details.error);
+  add('Error code', e.details.errorCode);
+  add('Error message', e.details.errorMessage);
+  add('Network error', e.details.error);
   add('Note', [
     e.severity === 'warning' ? 'Slow: took 2 s or more' : '',
     e.details.background ? 'Background call made by the app, not by your action' : '',
+    e.severity === 'error' && !e.details.errorMessage && !e.details.error
+      ? 'No error message was captured for this request'
+      : '',
     e.details.fromCache ? 'Served from the browser cache' : '',
   ].filter(Boolean).join('. '));
   return dl;
@@ -149,6 +157,10 @@ function eventItem(e: TimelineEvent, slowest: number): HTMLLIElement {
   );
   summary.title = e.route ?? '';
 
+  // Failure-first: the error message sits on the event itself, not only in Details.
+  const problem = e.details.errorMessage ?? e.details.error;
+  if (problem) summary.append(el('span', 'message', problem));
+
   // Duration bar, relative to the slowest listed event.
   const bar = el('span', 'bar');
   const fill = el('span', 'fill');
@@ -163,10 +175,16 @@ function eventItem(e: TimelineEvent, slowest: number): HTMLLIElement {
 
 function renderEvents(): void {
   const filter = filterEl.value as Filter;
-  const shown = shownEvents(events, filter);
+  const shown = shownEvents(events, filter, errors);
   const listed = shown.slice(-MAX_ROWS);
   const hiddenBackground =
     filter === 'activity' ? shownEvents(events, 'dataverse').filter((e) => !isShown(e, 'activity')).length : 0;
+  const failures = shownEvents(events, 'failures');
+  const backgroundFailures = failures.filter((e) => e.details.background).length;
+
+  failuresButton.hidden = failures.length === 0 || filter === 'failures';
+  failuresButton.textContent =
+    `${failures.length} failed` + (backgroundFailures > 0 ? ` (${backgroundFailures} background)` : '');
 
   countEl.textContent =
     events.length === 0
@@ -194,7 +212,7 @@ function renderEvents(): void {
 
 async function copyShown(): Promise<void> {
   const filter = filterEl.value as Filter;
-  const shown = shownEvents(events, filter);
+  const shown = shownEvents(events, filter, errors);
   const label = filterEl.selectedOptions[0]?.textContent ?? filter;
   const heading = `D365 Trace Viewer · ${recording.host ?? current?.host ?? ''} · ${label} · ${shown.length} of ${events.length} captured`;
   await navigator.clipboard.writeText(eventsToText(shown, heading));
@@ -234,6 +252,10 @@ resumeButton.addEventListener('click', () => send({ type: 'resume' }).catch(onCo
 stopButton.addEventListener('click', () => send({ type: 'stop' }).catch(onCommandError));
 clearButton.addEventListener('click', () => send({ type: 'clear' }).catch(onCommandError));
 filterEl.addEventListener('change', renderEvents);
+failuresButton.addEventListener('click', () => {
+  filterEl.value = 'failures';
+  renderEvents();
+});
 timelineEl.addEventListener('click', (event) => {
   const summary = (event.target as Element).closest('.summary');
   const id = summary?.closest<HTMLElement>('li.event')?.dataset.id;
@@ -271,8 +293,9 @@ onStoreChanged((change) => {
     events = change.events;
     if (events.length === 0) expanded.clear();
   }
+  if (change.errors) errors = change.errors;
   renderRecording();
-  if (change.events) renderEvents();
+  if (change.events || change.errors) renderEvents();
 });
 
 chrome.tabs.onActivated.addListener(() => {
@@ -282,11 +305,12 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (tab.active && changeInfo.url !== undefined) refreshActiveTab().catch(console.error);
 });
 
-Promise.all([getAllowedHosts(), getState(), getEvents(), refreshActiveTab()])
-  .then(([hosts, state, stored]) => {
+Promise.all([getAllowedHosts(), getState(), getEvents(), getErrorDetails(), refreshActiveTab()])
+  .then(([hosts, state, stored, storedErrors]) => {
     allowedHosts = hosts;
     recording = state;
     events = stored;
+    errors = storedErrors;
     render();
   })
   .catch((error: unknown) => {
