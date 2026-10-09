@@ -25,7 +25,7 @@ let allowedHosts: string[] = [];
 function render(): void {
   if (!current) {
     envNameEl.textContent = 'Not a Dynamics 365 page';
-    envDetailEl.textContent = 'Nothing is recorded on this tab. Switch to a Dynamics 365 tab to use the Trace Viewer.';
+    envDetailEl.textContent = 'Open a Dynamics 365 or model-driven app page in this tab.';
     allowEl.hidden = true;
     return;
   }
