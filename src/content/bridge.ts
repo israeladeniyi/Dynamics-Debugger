@@ -11,7 +11,11 @@ window.addEventListener('message', (event: MessageEvent) => {
   if (!data || data.source !== SOURCE || data.type !== 'error-detail') return;
   const detail = toErrorDetail(data);
   if (!detail) return;
-  chrome.runtime.sendMessage({ type: 'error-detail', detail }).catch(() => {
-    // The extension was reloaded or updated; this page's bridge is stale.
-  });
+  try {
+    chrome.runtime.sendMessage({ type: 'error-detail', detail }).catch(() => undefined);
+  } catch {
+    // The extension was reloaded or updated after this page loaded, so this
+    // bridge is stale and Chrome throws "Extension context invalidated".
+    // A page refresh loads the new one.
+  }
 });
