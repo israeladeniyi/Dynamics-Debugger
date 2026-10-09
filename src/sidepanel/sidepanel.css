@@ -9,6 +9,11 @@
   --paused: #ca5010;
   --fail-bg: #fde7e9;
   --fail-fg: #a4262c;
+  --ok: #107c10;
+  --warn: #c19c00;
+  --warn-bg: #fff8df;
+  --bar: #c7d7ee;
+  --hover: #f3f3f3;
   font-family: 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
 }
@@ -21,6 +26,11 @@
     --border: #3a3a3a;
     --fail-bg: #442726;
     --fail-fg: #f1707b;
+    --ok: #6ccb5f;
+    --warn: #fce100;
+    --warn-bg: #3d3416;
+    --bar: #3b4a60;
+    --hover: #2a2a2a;
   }
 }
 
@@ -172,50 +182,111 @@ h2 {
   gap: 4px;
 }
 
-.requests {
-  width: 100%;
-  border-collapse: collapse;
+.timeline {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
   font-size: 12px;
-  table-layout: fixed;
 }
 
-.requests th {
-  text-align: left;
-  font-weight: 600;
+.event {
+  border-left: 3px solid var(--ok);
+  border-bottom: 1px solid var(--border);
+}
+
+.event.sev-warning {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.event.sev-error {
+  border-left-color: var(--fail-fg);
+  background: var(--fail-bg);
+  color: var(--fail-fg);
+}
+
+.event.background {
   color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  padding: 2px 4px;
 }
 
-.requests td {
-  padding: 2px 4px;
-  border-bottom: 1px solid var(--border);
+.event.background.sev-success {
+  border-left-color: var(--border);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 82px 1fr auto 52px;
+  column-gap: 6px;
+  width: 100%;
+  padding: 3px 4px 2px 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary:hover {
+  background: var(--hover);
+}
+
+.summary .title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.requests th:nth-child(1) { width: 88px; }
-.requests th:nth-child(2) { width: 84px; }
-.requests th:nth-child(4) { width: 46px; }
-.requests th:nth-child(5) { width: 44px; }
-
-.requests .time,
-.requests .num {
+.summary .time,
+.summary .dur,
+.summary .code {
   font-variant-numeric: tabular-nums;
 }
 
-.requests .num {
+.summary .dur {
   text-align: right;
 }
 
-.requests tr.background td {
+.summary .bar {
+  grid-column: 2 / -1;
+  height: 3px;
+  margin-top: 2px;
+}
+
+.summary .fill {
+  display: block;
+  height: 100%;
+  background: var(--bar);
+  border-radius: 2px;
+}
+
+.sev-warning .fill {
+  background: var(--warn);
+}
+
+.details {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 2px 6px;
+  margin: 0;
+  padding: 4px 6px 6px 92px;
+}
+
+.details dt {
   color: var(--muted);
 }
 
-.requests tr.failed td {
-  background: var(--fail-bg);
-  color: var(--fail-fg);
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.gap {
+  padding: 2px 0 2px 92px;
+  color: var(--muted);
+  font-style: italic;
+  border-bottom: 1px dashed var(--border);
 }
 
 .list-header select {

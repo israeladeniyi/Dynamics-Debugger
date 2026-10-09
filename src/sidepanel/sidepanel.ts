@@ -1,14 +1,24 @@
 // Side panel entry point. Shows which Dynamics environment the active tab is
-// on, whether tracing is enabled for it, the recording controls, and the raw
-// list of captured requests with the Dataverse operation recognised from each
-// URL. The friendly timeline arrives in Milestone 5.
+// on, whether tracing is enabled for it, the recording controls, and the
+// timeline of captured requests: status colour, duration and expandable Details.
 import { detectDynamics, type DynamicsEnvironment } from '../dataverse/detect';
 import { getAllowedHosts, onAllowedHostsChanged, setHostAllowed } from '../settings/allowedHosts';
 import { getEvents, getState, onStoreChanged } from '../recording/store';
 import { IDLE_STATE, type CapturedRequest, type RecordingCommand, type RecordingState } from '../recording/types';
-import { rowColumns, rowsToText, shownRows, toRows, type Filter } from './rows';
+import type { TimelineEvent } from '../timeline/normalizer';
+import {
+  GAP_MS,
+  eventsToText,
+  formatDuration,
+  formatGap,
+  formatStatus,
+  formatTime,
+  isShown,
+  shownEvents,
+  type Filter,
+} from './rows';
 
-/** Rows shown at most; the full session stays in storage. */
+/** Events listed at most; the full session stays in storage. */
 const MAX_ROWS = 300;
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -35,7 +45,7 @@ const filterEl = byId<HTMLSelectElement>('filter');
 const copyButton = byId<HTMLButtonElement>('btn-copy');
 const copyStatusEl = byId('copy-status');
 const countEl = byId('count');
-const tbody = byId<HTMLTableElement>('requests').tBodies[0];
+const timelineEl = byId<HTMLOListElement>('timeline');
 const emptyEl = byId('empty');
 
 versionEl.textContent = `v${chrome.runtime.getManifest().version}`;
@@ -45,6 +55,8 @@ let currentTabId: number | null = null;
 let allowedHosts: string[] = [];
 let recording: RecordingState = IDLE_STATE;
 let events: CapturedRequest[] = [];
+/** Events whose Details are open; kept across re-renders. */
+const expanded = new Set<string>();
 
 function renderEnvironment(): void {
   if (!current) {
@@ -93,60 +105,100 @@ function renderRecording(): void {
   }
 }
 
-function cell(text: string, className?: string): HTMLTableCellElement {
-  const td = document.createElement('td');
-  td.textContent = text;
-  if (className) td.className = className;
-  return td;
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function detailsList(e: TimelineEvent): HTMLDListElement {
+  const dl = el('dl', 'details');
+  const add = (term: string, value: string | undefined) => {
+    if (!value) return;
+    dl.append(el('dt', undefined, term), el('dd', undefined, value));
+  };
+  add('Request', `${e.method ?? ''} ${e.route ?? ''}`);
+  add('Status', formatStatus(e.status));
+  add('Duration', e.durationMs === undefined ? undefined : `${e.durationMs} ms`);
+  add('Started', formatTime(e.timestamp));
+  add('Request ID', e.correlationId);
+  add('Table', e.details.dataverse && e.operation !== 'Other' ? e.resource : undefined);
+  add('Error', e.details.error);
+  add('Note', [
+    e.severity === 'warning' ? 'Slow: took 2 s or more' : '',
+    e.details.background ? 'Background call made by the app, not by your action' : '',
+    e.details.fromCache ? 'Served from the browser cache' : '',
+  ].filter(Boolean).join('. '));
+  return dl;
+}
+
+function eventItem(e: TimelineEvent, slowest: number): HTMLLIElement {
+  const li = el('li', `event sev-${e.severity}${e.details.background ? ' background' : ''}`);
+  li.dataset.id = e.id;
+  const open = expanded.has(e.id);
+
+  const summary = el('button', 'summary');
+  summary.type = 'button';
+  summary.setAttribute('aria-expanded', String(open));
+  summary.append(
+    el('span', 'time', formatTime(e.timestamp)),
+    el('span', 'title', e.details.title),
+    el('span', 'code', formatStatus(e.status)),
+    el('span', 'dur', formatDuration(e.durationMs ?? 0)),
+  );
+  summary.title = e.route ?? '';
+
+  // Duration bar, relative to the slowest listed event.
+  const bar = el('span', 'bar');
+  const fill = el('span', 'fill');
+  fill.style.width = `${Math.max(1, Math.round(((e.durationMs ?? 0) / slowest) * 100))}%`;
+  bar.append(fill);
+  summary.append(bar);
+
+  li.append(summary);
+  if (open) li.append(detailsList(e));
+  return li;
 }
 
 function renderEvents(): void {
   const filter = filterEl.value as Filter;
-  const all = toRows(events);
-  const shown = shownRows(all, filter);
-  const rows = shown.slice(-MAX_ROWS);
-  const hiddenBackground = filter === 'activity' ? all.filter((r) => r.dataverse?.background).length : 0;
+  const shown = shownEvents(events, filter);
+  const listed = shown.slice(-MAX_ROWS);
+  const hiddenBackground =
+    filter === 'activity' ? shownEvents(events, 'dataverse').filter((e) => !isShown(e, 'activity')).length : 0;
 
   countEl.textContent =
     events.length === 0
       ? ''
       : `${shown.length} shown of ${events.length} captured` +
-        (hiddenBackground > 0 ? ` · ${hiddenBackground} background Dataverse calls hidden` : '') +
-        (shown.length > rows.length ? ` (latest ${rows.length} listed)` : '');
+        (hiddenBackground > 0
+          ? ` · ${hiddenBackground} background Dataverse ${hiddenBackground === 1 ? 'call' : 'calls'} hidden`
+          : '') +
+        (shown.length > listed.length ? ` (latest ${listed.length} listed)` : '');
   emptyEl.hidden = events.length > 0;
 
+  const slowest = Math.max(1, ...listed.map((e) => e.durationMs ?? 0));
   const fragment = document.createDocumentFragment();
-  for (const row of rows) {
-    const { event: e, dataverse } = row;
-    const tr = document.createElement('tr');
-    const classes = [];
-    if (e.status === 0 || e.status >= 400) classes.push('failed');
-    if (dataverse?.background) classes.push('background');
-    tr.className = classes.join(' ');
-    tr.title = [
-      `${e.method} ${e.path}`,
-      dataverse?.background ? 'Background call made by the app' : '',
-      e.serviceRequestId ? `Request ID: ${e.serviceRequestId}` : '',
-      e.error ?? '',
-      e.fromCache ? 'From cache' : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
-    const [time, operation, target, status, ms] = rowColumns(row);
-    tr.append(cell(time, 'time'), cell(operation, 'op'), cell(target, 'path'), cell(status), cell(ms, 'num'));
-    fragment.append(tr);
+  let previous: TimelineEvent | null = null;
+  for (const e of listed) {
+    if (previous && e.timestamp - previous.timestamp >= GAP_MS) {
+      fragment.append(el('li', 'gap', formatGap(e.timestamp - previous.timestamp)));
+    }
+    fragment.append(eventItem(e, slowest));
+    previous = e;
   }
-  tbody.replaceChildren(fragment);
+  timelineEl.replaceChildren(fragment);
   copyButton.disabled = shown.length === 0;
 }
 
 async function copyShown(): Promise<void> {
   const filter = filterEl.value as Filter;
-  const rows = shownRows(toRows(events), filter);
+  const shown = shownEvents(events, filter);
   const label = filterEl.selectedOptions[0]?.textContent ?? filter;
-  const heading = `D365 Trace Viewer · ${recording.host ?? current?.host ?? ''} · ${label} · ${rows.length} of ${events.length} captured`;
-  await navigator.clipboard.writeText(rowsToText(rows, heading));
-  copyStatusEl.textContent = `Copied ${rows.length} rows`;
+  const heading = `D365 Trace Viewer · ${recording.host ?? current?.host ?? ''} · ${label} · ${shown.length} of ${events.length} captured`;
+  await navigator.clipboard.writeText(eventsToText(shown, heading));
+  copyStatusEl.textContent = `Copied ${shown.length} rows`;
   setTimeout(() => (copyStatusEl.textContent = ''), 2500);
 }
 
@@ -182,6 +234,14 @@ resumeButton.addEventListener('click', () => send({ type: 'resume' }).catch(onCo
 stopButton.addEventListener('click', () => send({ type: 'stop' }).catch(onCommandError));
 clearButton.addEventListener('click', () => send({ type: 'clear' }).catch(onCommandError));
 filterEl.addEventListener('change', renderEvents);
+timelineEl.addEventListener('click', (event) => {
+  const summary = (event.target as Element).closest('.summary');
+  const id = summary?.closest<HTMLElement>('li.event')?.dataset.id;
+  if (!id) return;
+  if (expanded.has(id)) expanded.delete(id);
+  else expanded.add(id);
+  renderEvents();
+});
 copyButton.addEventListener('click', () => {
   copyShown().catch((error: unknown) => {
     console.error('[D365 Trace Viewer] Copy failed', error);
@@ -207,7 +267,10 @@ onAllowedHostsChanged((hosts) => {
 
 onStoreChanged((change) => {
   if (change.state) recording = change.state;
-  if (change.events) events = change.events;
+  if (change.events) {
+    events = change.events;
+    if (events.length === 0) expanded.clear();
+  }
   renderRecording();
   if (change.events) renderEvents();
 });
