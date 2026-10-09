@@ -82,6 +82,26 @@ registerNetworkCapture(
   },
 );
 
+/**
+ * The manifest adds the content scripts only when a page loads. A tab that was
+ * open before the extension was installed or reloaded has none, or has a
+ * bridge cut off from the reloaded extension ("Extension context
+ * invalidated"), so error messages would be lost. Adding them again when
+ * recording starts fixes that without a page refresh. main-world.ts skips
+ * itself if it already ran; a second bridge only repeats a message, which the
+ * store keys by request ID.
+ */
+async function attachContentScripts(tabId: number): Promise<void> {
+  const target = { tabId, allFrames: true };
+  try {
+    await chrome.scripting.executeScript({ target, files: ['content/main-world.js'], world: 'MAIN' });
+    await chrome.scripting.executeScript({ target, files: ['content/bridge.js'] });
+  } catch (error) {
+    // Recording still works without them; only the error messages are missing.
+    logError('adding content scripts failed')(error);
+  }
+}
+
 async function runCommand(command: RecordingCommand): Promise<RecordingState> {
   const state = await currentState;
   switch (command.type) {
@@ -92,6 +112,7 @@ async function runCommand(command: RecordingCommand): Promise<RecordingState> {
       buffer = [];
       await clearEvents();
       await changeState({ status: 'recording', tabId: command.tabId, host: command.host, startedAt: Date.now() });
+      await attachContentScripts(command.tabId);
       break;
     }
     case 'pause':

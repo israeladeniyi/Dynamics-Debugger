@@ -48,6 +48,7 @@
     }
   ],
   "permissions": [
+    "scripting",
     "sidePanel",
     "storage",
     "webRequest"
