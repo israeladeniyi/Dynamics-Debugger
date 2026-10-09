@@ -17,14 +17,18 @@
       <span id="status-text">Not recording</span>
     </section>
 
-    <section class="tab-info">
-      <h2>Active tab</h2>
-      <p id="tab-host">Checking…</p>
+    <section class="env" aria-live="polite">
+      <h2>Environment</h2>
+      <p id="env-name" class="env-name">Checking…</p>
+      <p id="env-detail" class="hint"></p>
+      <div id="env-allow" class="env-allow" hidden>
+        <p id="env-allow-text"></p>
+        <button id="env-allow-button" type="button"></button>
+      </div>
     </section>
 
     <main class="empty">
-      <p>The side panel is working.</p>
-      <p class="hint">Dynamics detection and recording arrive in the next milestones.</p>
+      <p>Recording arrives in the next milestone.</p>
     </main>
 
     <script type="module" src="sidepanel.js"></script>

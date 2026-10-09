@@ -71,11 +71,6 @@ h2 {
   background: var(--idle);
 }
 
-.tab-info p {
-  margin: 0 0 12px;
-  word-break: break-all;
-}
-
 .empty {
   padding: 16px;
   border: 1px dashed var(--border);
@@ -85,4 +80,36 @@ h2 {
 
 .empty p {
   margin: 4px 0;
+}
+
+.env {
+  margin-bottom: 12px;
+}
+
+.env p {
+  margin: 0 0 4px;
+  word-break: break-all;
+}
+
+.env-name {
+  font-weight: 600;
+}
+
+.env-allow {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--idle);
+  border-radius: 6px;
+}
+
+.env-allow.allowed {
+  border-left-color: #107c10;
+}
+
+.env-allow button {
+  margin-top: 4px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
 }
