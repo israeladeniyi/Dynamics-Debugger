@@ -11,8 +11,9 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 
 - Milestone 3 (capture proof of concept): **Start**, **Pause**, **Resume**, **Stop** and **Clear** in the side panel, a pulsing *Recording* indicator and a **REC** badge on the toolbar button. While recording, every request the recorded tab makes to its Dynamics host is listed with time, method, path, status and duration. Only enabled environments can be recorded. See *What is captured* below.
 - Milestone 4 (Dataverse recognition): each Dataverse Web API request is labelled from its URL as **Create**, **Retrieve**, **Retrieve list**, **Update** or **Delete** on a table, or as a **Function**, **Action**, **Batch** or **Metadata** call. Known background calls the app makes on its own (client metadata, settings, Copilot and Customer Service features) are hidden by the default **Data activity** filter; **All Dataverse** and **All requests** show everything, with background rows greyed out. Hover a row for its full path and request ID. **Copy** puts the listed rows on the clipboard as tab-separated text (time, operation, target, status, ms, method, path, request ID), which pastes into Excel, a ticket or a chat. It holds only what the panel already stores.
+- Milestone 5 (clean timeline): the list is a timeline in start order. Each event has a status colour (green OK, amber slow at 2 s or more, red failed, grey background), its duration with a bar scaled to the slowest listed event, and a "N s later" marker where 5 s or more passed between events. Click an event to open its Details: request, status, duration, start time, request ID, table and notes.
 
-The friendly timeline comes in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
+Friendly names, error messages and action stories come in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
 
 ## What is captured
 
@@ -68,7 +69,9 @@ src/
     TraceEvent.ts          Normalized event shape used by every layer
   sidepanel/
     sidepanel.html/.ts/.css
-    rows.ts                Filtering, sorting and copy-as-text for the request list
+    rows.ts                Filtering, sorting, formatting and copy-as-text for the timeline
+  timeline/
+    normalizer.ts          Captured request -> TraceEvent with severity and Details
 test/                      Unit tests (vitest)
 scripts/
   build.mjs                esbuild bundle + static copy into dist/

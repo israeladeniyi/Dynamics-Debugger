@@ -38,7 +38,7 @@
 
     <main>
       <div class="list-header">
-        <h2>Captured requests</h2>
+        <h2>Timeline</h2>
         <label class="hint">Show
           <select id="filter">
             <option value="activity" selected>Data activity</option>
@@ -52,13 +52,8 @@
         <span id="copy-status" class="hint" aria-live="polite"></span>
         <button id="btn-copy" type="button" title="Copy the listed requests as tab-separated text" disabled>Copy</button>
       </div>
-      <table id="requests" class="requests">
-        <thead>
-          <tr><th>Time</th><th>Operation</th><th>Target</th><th>Status</th><th>ms</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <p id="empty" class="empty">Press Start, then use Dynamics as normal. Requests appear here.</p>
+      <ol id="timeline" class="timeline" aria-label="Timeline"></ol>
+      <p id="empty" class="empty">Press Start, then use Dynamics as normal. Requests appear here in the order they started.</p>
     </main>
 
     <script type="module" src="sidepanel.js"></script>
