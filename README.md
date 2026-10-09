@@ -9,7 +9,16 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 - Milestone 1 (extension shell): loads unpacked in Edge, toolbar button opens a side panel.
 - Milestone 2 (Dynamics detection): the side panel is only available on Dynamics 365 tabs (`https://<org>.crm*.dynamics.com`). It shows the detected environment, and you enable tracing per environment with **Enable for this environment**. Nothing is recorded yet.
 
-Capture and the timeline come in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
+- Milestone 3 (capture proof of concept): **Start**, **Pause**, **Resume**, **Stop** and **Clear** in the side panel, a pulsing *Recording* indicator and a **REC** badge on the toolbar button. While recording, every request the recorded tab makes to its Dynamics host is listed with time, method, path, status and duration. Only enabled environments can be recorded. See *What is captured* below.
+
+The friendly timeline comes in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
+
+## What is captured
+
+- Captured: start time, duration, HTTP method, path, HTTP status (or the browser's network error), the `x-ms-service-request-id` response header, and whether it came from cache.
+- Never captured: query strings (Dynamics puts FetchXML and filter values there), request or response bodies, cookies, `Authorization` or any other header. Record GUIDs in the path are replaced by `{id}`.
+- Only the tab you pressed **Start** on, and only its Dynamics host. Other tabs and sites are ignored.
+- Stored in `chrome.storage.session`: in memory, kept if Edge pauses the extension's background script, and wiped when Edge closes. At most 5,000 requests per recording; the oldest are dropped after that.
 
 ## Build
 
@@ -42,7 +51,12 @@ public/
   icons/                   Toolbar icons (regenerate with scripts/make-icons.py)
 src/
   background/
-    service-worker.ts      Toolbar button opens the panel; panel enabled only on Dynamics tabs
+    service-worker.ts      Panel only on Dynamics tabs; runs recording commands and capture
+  capture/
+    classify.ts            Sanitizes paths and sorts URLs (Dataverse API, $batch, page, resource)
+    network.ts             Read-only chrome.webRequest capture for the recorded tab
+  recording/
+    store.ts, types.ts     Recording state and captured requests in chrome.storage.session
   dataverse/
     detect.ts              Recognises Dynamics 365 hosts and app pages from a URL
   settings/
