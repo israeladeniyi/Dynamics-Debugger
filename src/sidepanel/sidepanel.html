@@ -47,7 +47,11 @@
           </select>
         </label>
       </div>
-      <p id="count" class="hint"></p>
+      <div class="count-row">
+        <p id="count" class="hint"></p>
+        <span id="copy-status" class="hint" aria-live="polite"></span>
+        <button id="btn-copy" type="button" title="Copy the listed requests as tab-separated text" disabled>Copy</button>
+      </div>
       <table id="requests" class="requests">
         <thead>
           <tr><th>Time</th><th>Operation</th><th>Target</th><th>Status</th><th>ms</th></tr>

@@ -10,7 +10,7 @@ Target: Microsoft Edge desktop, Manifest V3, Edge Side Panel UI, TypeScript.
 - Milestone 2 (Dynamics detection): the side panel is only available on Dynamics 365 tabs (`https://<org>.crm*.dynamics.com`). It shows the detected environment, and you enable tracing per environment with **Enable for this environment**. Nothing is recorded yet.
 
 - Milestone 3 (capture proof of concept): **Start**, **Pause**, **Resume**, **Stop** and **Clear** in the side panel, a pulsing *Recording* indicator and a **REC** badge on the toolbar button. While recording, every request the recorded tab makes to its Dynamics host is listed with time, method, path, status and duration. Only enabled environments can be recorded. See *What is captured* below.
-- Milestone 4 (Dataverse recognition): each Dataverse Web API request is labelled from its URL as **Create**, **Retrieve**, **Retrieve list**, **Update** or **Delete** on a table, or as a **Function**, **Action**, **Batch** or **Metadata** call. Known background calls the app makes on its own (client metadata, settings, Copilot and Customer Service features) are hidden by the default **Data activity** filter; **All Dataverse** and **All requests** show everything, with background rows greyed out. Hover a row for its full path and request ID.
+- Milestone 4 (Dataverse recognition): each Dataverse Web API request is labelled from its URL as **Create**, **Retrieve**, **Retrieve list**, **Update** or **Delete** on a table, or as a **Function**, **Action**, **Batch** or **Metadata** call. Known background calls the app makes on its own (client metadata, settings, Copilot and Customer Service features) are hidden by the default **Data activity** filter; **All Dataverse** and **All requests** show everything, with background rows greyed out. Hover a row for its full path and request ID. **Copy** puts the listed rows on the clipboard as tab-separated text (time, operation, target, status, ms, method, path, request ID), which pastes into Excel, a ticket or a chat. It holds only what the panel already stores.
 
 The friendly timeline comes in later milestones. See [ROADMAP.md](ROADMAP.md) for the milestone list and planned features.
 
@@ -68,6 +68,7 @@ src/
     TraceEvent.ts          Normalized event shape used by every layer
   sidepanel/
     sidepanel.html/.ts/.css
+    rows.ts                Filtering, sorting and copy-as-text for the request list
 test/                      Unit tests (vitest)
 scripts/
   build.mjs                esbuild bundle + static copy into dist/

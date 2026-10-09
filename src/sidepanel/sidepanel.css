@@ -147,13 +147,15 @@ h2 {
   margin: 8px 0 4px;
 }
 
-.controls button {
+.controls button,
+#btn-copy {
   padding: 4px 10px;
   font: inherit;
   cursor: pointer;
 }
 
-.controls button:disabled {
+.controls button:disabled,
+#btn-copy:disabled {
   cursor: default;
 }
 
@@ -222,4 +224,14 @@ h2 {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
+}
+
+.count-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count-row #count {
+  flex: 1;
 }
