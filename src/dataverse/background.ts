@@ -33,6 +33,10 @@ const BACKGROUND_OPERATIONS = new Set([
   'msdyn_ReportToMonitoringHub',
   'msdyn_InvokeIntelligenceAction',
   'msdyn_DiscoverCustomerServiceSummaryInsight',
+  // Seen in a later Edge test on the same trial: opening a Case marks it read
+  // and the app reads Customer Service environment variables.
+  'msdyn_UpdateReadStatus',
+  'msdyn_RetrieveEnvironmentVariableValueForCS',
 ]);
 
 /** Prefixes of background functions/actions (Customer Service channel connection). */

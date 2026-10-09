@@ -89,6 +89,8 @@ describe('background calls', () => {
     ['POST', 'msdyn_copilotevents'],
     ['GET', 'organizationsettings'],
     ['GET', 'msdyn_rtestructuredtemplateconfigs({id})'],
+    ['POST', 'msdyn_UpdateReadStatus'],
+    ['POST', 'msdyn_RetrieveEnvironmentVariableValueForCS'],
   ])('%s %s is background', (method, path) => {
     expect(parse(method, path).background).toBe(true);
   });
@@ -99,6 +101,8 @@ describe('background calls', () => {
     ['GET', 'incidents({id})'],
     ['GET', 'activitypointers'],
     ['POST', 'new_EscalateCase'],
+    // Called when the user opens the Subject picker.
+    ['POST', 'msdyn_GetSubjectHierarchyData'],
     // A write to a config table is not hidden; only its reads are.
     ['PATCH', 'organizationsettings({id})'],
   ])('%s %s is shown', (method, path) => {
